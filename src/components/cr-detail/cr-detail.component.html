@@ -21,14 +21,31 @@
 			<h3>Proposed changes</h3>
 			<table class="cr-diff__table">
 				<thead>
-					<tr><th>SKU</th><th>Change</th><th>Before</th><th>After</th></tr>
+					<tr>
+						<th>SKU</th>
+						<th>Change</th>
+						<th>Before</th>
+						<th>After</th>
+					</tr>
 				</thead>
 				<tbody>
 					<tr *ngFor="let row of diff" class="cr-diff__row" [attr.data-kind]="row.kind">
 						<td>{{ row.sku }}</td>
 						<td class="cr-diff__kind">{{ row.kind }}</td>
-						<td>{{ row.baseline ? row.baseline.quantity + ' × ' + fmt(row.baseline.unitPrice) : '—' }}</td>
-						<td>{{ row.proposed ? row.proposed.quantity + ' × ' + fmt(row.proposed.unitPrice) : '—' }}</td>
+						<td>
+							<ng-container *ngIf="row.baseline; else noBaseline">
+								{{ row.baseline.quantity }} × {{ fmt(row.baseline.unitPrice) }}
+								<span>{{ row.baseline.description }}</span>
+							</ng-container>
+							<ng-template #noBaseline>—</ng-template>
+						</td>
+						<td>
+							<ng-container *ngIf="row.proposed; else noProposal">
+								{{ row.proposed.quantity }} × {{ fmt(row.proposed.unitPrice) }}
+								<span>{{ row.proposed.description }}</span>
+							</ng-container>
+							<ng-template #noProposal>—</ng-template>
+						</td>
 					</tr>
 				</tbody>
 			</table>
@@ -50,20 +67,22 @@
 		<!-- Actions -->
 		<section class="cr-actions" *ngIf="canApprove || canReject || actionError">
 			<p *ngIf="actionError" class="cr-actions__error" role="alert">{{ actionError }}</p>
+			<p *ngIf="submitting" class="cr-actions__pending" role="status">Submitting change request…</p>
 
-			<button type="button" class="cr-actions__approve" [disabled]="!canApprove || submitting" (click)="approve()">
-				Approve
-			</button>
+			<button type="button" class="cr-actions__approve" [disabled]="!canApprove || submitting" (click)="approve()">Approve</button>
 
 			<div class="cr-actions__reject" *ngIf="canReject">
 				<label>
 					Reason for rejection
 					<textarea class="cr-actions__reason" [formControl]="rejectControl"></textarea>
 				</label>
-				<p *ngIf="rejectControl.invalid && rejectControl.touched" class="cr-actions__reason-error" role="alert">
-					Please enter a reason.
-				</p>
-				<button type="button" class="cr-actions__reject-btn" [disabled]="!canReject || submitting || rejectControl.invalid" (click)="reject()">
+				<p *ngIf="rejectControl.invalid && rejectControl.touched" class="cr-actions__reason-error" role="alert">Please enter a reason.</p>
+				<button
+					type="button"
+					class="cr-actions__reject-btn"
+					[disabled]="!canReject || submitting || rejectControl.invalid"
+					(click)="reject()"
+				>
 					Reject
 				</button>
 			</div>
