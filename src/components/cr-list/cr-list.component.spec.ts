@@ -3,16 +3,18 @@ import { CrListComponent } from './cr-list.component';
 import { SessionService } from '../../session/session.service';
 import { users } from '../../api/fixtures';
 import { ReqUser } from '../../models/cr.models';
+import { CrApiService } from '../../api/cr-api.service';
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
-async function render(user: ReqUser): Promise<ComponentFixture<CrListComponent>> {
+async function render(user: ReqUser, configureApi?: (api: CrApiService) => void): Promise<ComponentFixture<CrListComponent>> {
 	TestBed.configureTestingModule({
 		imports: [CrListComponent],
 		providers: [{ provide: SessionService, useValue: { user } }],
 	});
 	await TestBed.compileComponents();
 	const fixture = TestBed.createComponent(CrListComponent);
+	configureApi?.(fixture.debugElement.injector.get(CrApiService));
 	fixture.detectChanges(); // ngOnInit -> load()
 	await flush(); // let the mock API resolve
 	fixture.detectChanges(); // render the loaded/empty state
@@ -48,5 +50,21 @@ describe('CrListComponent', () => {
 
 		expect(fixture.nativeElement.querySelector('.cr-list__empty').textContent).toContain('match this status');
 		expect(fixture.nativeElement.querySelector('.cr-list__table')).toBeNull();
+	});
+
+	it('shows loading and error states for a slow, failing request', async () => {
+		const fixture = await render(users.approver, (api) => {
+			api.latencyMs = 20;
+			api.failNext = true;
+		});
+
+		expect(fixture.componentInstance.state.status).toBe('loading');
+		expect(fixture.nativeElement.querySelector('.cr-list__loading')).not.toBeNull();
+
+		await new Promise((resolve) => setTimeout(resolve, 25));
+		fixture.detectChanges();
+
+		expect(fixture.nativeElement.querySelector('.cr-list__error').textContent).toContain('Network error');
+		expect(fixture.nativeElement.querySelector('.cr-list__error button')).not.toBeNull();
 	});
 });
